@@ -9,23 +9,32 @@ load_dotenv()
 
 class Chain:
     def __init__(self):
-        self.llm = ChatGroq(model="llama-3.1-8b-instant",temperature=0,groq_api_key="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")
+        api_key = os.getenv("GROQ_API_KEY")
+        if not api_key:
+            raise ValueError("GROQ_API_KEY not found. Please set it in .env file or environment variables.")
+        
+        self.llm = ChatGroq(
+            model="llama-3.1-8b-instant",
+            temperature=0,
+            groq_api_key=api_key
+        )
 
     def extract_jobs(self,cleaned_text):
         prompt_extract = PromptTemplate.from_template(
             """
-            ### Scrap text from website:
+            ### Scraped text from website:
             {page_data} 
-            ###INSTRCUTION:
+            ### INSTRUCTION:
             The scraped text is from the career's page of a website.
-            Your job is to extract the job boostings and return them adjacent form it containing the following keys: 'role', 'experience', 'skills' and 'description'.
+            Your job is to extract the job postings and return them in JSON format containing the following keys: 'role', 'experience', 'skills' and 'description'.
+            For skills, provide them as a comma-separated string.
             Only return the valid JSON.
             ### NO PREAMBLE only give me the json object
             """
         )       
 
         chain_extract = prompt_extract | self.llm
-        res = chain_extract.invoke({cleaned_text})
+        res = chain_extract.invoke({"page_data": cleaned_text})
 
         try:
             json_parser = JsonOutputParser()
@@ -41,11 +50,11 @@ class Chain:
             {job_description}
 
             ### INSTRUCTION:
-            You are Manideep, a business development executive at Anarch. Anarch is an ai and software Solution company is Seamless integration of business processes through automated tools Over our experience. We have overpowered numerous enterprises With tailored solutions Process optimization Cost reduction and heightened overall efficiency.
+            You are Manideep, a business development executive at Anarch. Anarch is an AI and software solution company focused on seamless integration of business processes through automated tools. Over our experience, we have empowered numerous enterprises with tailored solutions, process optimization, cost reduction and heightened overall efficiency.
             Your job is to write a cold email to the client regarding the job mentioned above describing the capability in fulfilling their needs.
-            Also at the most relevant Ones from the following links Showcase Anarch's portfolio: {link_list}
-            Remember you are manideep BDE at Anarch.
-            do not provide a preamble.
+            Also showcase the most relevant ones from the following links from Anarch's portfolio: {link_list}
+            Remember you are Manideep, BDE at Anarch.
+            Do not provide a preamble.
 
             ### NO PREAMBLE only give me the email
             """
