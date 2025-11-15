@@ -57,16 +57,31 @@ def create_stream_app(llm, portfolio):
                 email_records = []
 
                 for job in jobs:
+                    # Get job details with fallbacks
+                    title = job.get('title') or job.get('role') or 'Untitled Role'
                     skills = job.get('skills', [])
-                    links = portfolio.query_links(skills)
+                    
+                    # Handle skills formatting
+                    if isinstance(skills, str):
+                        skills = [s.strip() for s in skills.split(',') if s.strip()]
+                    elif not isinstance(skills, list):
+                        skills = []
+                    
+                    # Only query portfolio if skills exist
+                    if skills:
+                        links = portfolio.query_links(skills)
+                    else:
+                        links = []
+                        st.warning(f"⚠️ No skills found for {title}")
+                    
                     email = llm.write_mail(job, links)
 
-                    st.subheader(f"💼 {job.get('title', 'Untitled Role')}")
+                    st.subheader(f"💼 {title}")
                     st.markdown(f"**Skills Required:** {', '.join(skills) if skills else 'N/A'}")
                     st.code(email, language='markdown')
 
                     email_records.append({
-                        "Job Title": job.get('title', ''),
+                        "Job Title": title,
                         "Skills": ", ".join(skills),
                         "Email": email
                     })
